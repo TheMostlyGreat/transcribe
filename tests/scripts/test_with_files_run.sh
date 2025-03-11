@@ -1,15 +1,16 @@
 #!/bin/bash
+# Test script for verifying the "files found" scenario in batch processing
 
-# Script for testing no files found condition
+# Path to the test directory with a file
+MEDIA_DIR="./tests/test_data/with_files"
 
-# Path to the empty test directory
-MEDIA_DIR="./test_empty_dir"
-
-# Path to the project root - do not escape spaces when using quotes
-PROJECT_DIR="/Users/alex/Library/CloudStorage/GoogleDrive-asalazar.personal@gmail.com/My Drive/Projects/transcribe"
+# Path to the project root
+PROJECT_DIR="$(pwd)"
 
 # First clear any existing log
 rm -f ~/Library/Logs/transcribe.log
+
+echo "Running batch processor on directory with files: $MEDIA_DIR"
 
 # Run the transcription batch process and capture output
 cd "$PROJECT_DIR"
@@ -23,4 +24,11 @@ fi
 
 # Check if log was created
 echo "After execution, log exists:"
-ls -la ~/Library/Logs/transcribe.log 2>/dev/null || echo "No log file - Good! No logging occurred." 
+ls -la ~/Library/Logs/transcribe.log 2>/dev/null || echo "No log file created - something went wrong!"
+
+# Display log contents if it exists
+if [ -f ~/Library/Logs/transcribe.log ]; then
+  echo
+  echo "Log contents:"
+  cat ~/Library/Logs/transcribe.log
+fi 

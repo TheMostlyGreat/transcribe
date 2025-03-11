@@ -7,9 +7,11 @@ from typing import List, Optional
 
 @dataclass
 class MockUtterance:
-    """Mock for AssemblyAI utterance object."""
+    """Mock for AssemblyAI utterance object with speaker identification."""
     speaker: str
     text: str
+    start: int = 0
+    end: int = 5000  # Default 5 seconds
 
 
 @dataclass
@@ -31,15 +33,6 @@ class MockTranscriptResponse:
             ]
 
 
-class MockTranscriber:
-    """Mock for AssemblyAI Transcriber class."""
-    
-    def transcribe(self, file_path, config=None):
-        """Mock transcription method."""
-        return MockTranscriptResponse()
-    
-    
-# Mock AssemblyAI module for testing
 class MockAssemblyAI:
     """Mock for the entire AssemblyAI module."""
     
@@ -51,10 +44,8 @@ class MockAssemblyAI:
     class Transcriber:
         """Mock Transcriber class."""
         def transcribe(self, file_path, config=None):
-            """Mock transcription method."""
             return MockTranscriptResponse()
     
-    # Mock settings module
     class Settings:
         """Mock settings class."""
         api_key = None
@@ -62,7 +53,6 @@ class MockAssemblyAI:
     settings = Settings()
 
 
-# Error response mock
 def create_error_response():
     """Create a mock transcript response with an error."""
     return MockTranscriptResponse(
@@ -73,7 +63,6 @@ def create_error_response():
     )
 
 
-# No utterances response mock
 def create_no_utterances_response():
     """Create a mock transcript response without utterances."""
     return MockTranscriptResponse(

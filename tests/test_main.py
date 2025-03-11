@@ -1,11 +1,15 @@
 """
 Tests for the __main__ module.
 """
+import os
 import sys
 import importlib
 from unittest import mock
 
 import pytest
+
+# Add parent directory to sys.path to ensure imports work
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 
 def test_main_module():

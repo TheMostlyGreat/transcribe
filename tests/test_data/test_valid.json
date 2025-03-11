@@ -1,0 +1,6 @@
+{
+  "status": "error",
+  "media_file": "tests/test_data/test_valid.mp3",
+  "error": "Failed to upload audio file: \nReason: Invalid API key\n\nRequest: <Request('POST', 'https://api.assemblyai.com/v2/upload')>",
+  "timestamp": 1741645858.186784
+}

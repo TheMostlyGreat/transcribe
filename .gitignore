@@ -164,3 +164,17 @@ cython_debug/
 # User configuration files
 run_transcribe.sh
 
+# macOS system files
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+
+# Log files
+/tmp/dir_contents.txt
+logs/*
+
+# Additional temporary files
+*~
+

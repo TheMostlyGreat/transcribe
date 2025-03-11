@@ -1,0 +1,6 @@
+{
+  "status": "error",
+  "media_file": "tests/test_data/with_files/test_audio.mp3",
+  "error": "Failed to upload audio file: \nReason: Upload failed, please try again. If you continue to have issues please reach out to support@assemblyai.com\n\nRequest: <Request('POST', 'https://api.assemblyai.com/v2/upload')>",
+  "timestamp": 1741645550.92571
+}

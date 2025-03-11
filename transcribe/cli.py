@@ -5,10 +5,17 @@ Command-line interface for the transcribe package.
 import argparse
 import logging
 import sys
+import os
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional, List
 
-from transcribe import __version__
+# Try to import version, but don't fail if unavailable
+try:
+    from transcribe import __version__
+except ImportError:
+    __version__ = "0.1"  # Fallback version
+
 from transcribe.core import transcribe_audio_file, SUPPORTED_EXTENSIONS
 from transcribe.batch import process_folder
 
@@ -16,6 +23,7 @@ from transcribe.batch import process_folder
 def setup_logging(verbose: bool = False) -> None:
     """
     Configure logging based on verbosity level.
+    Also deletes log files older than one month.
     
     Args:
         verbose: Whether to enable verbose (DEBUG) logging
@@ -27,15 +35,74 @@ def setup_logging(verbose: bool = False) -> None:
     root_logger.setLevel(level)
     
     # Clear any existing handlers
-    if not root_logger.handlers:
-        # Add a handler if none exists
-        handler = logging.StreamHandler()
-        formatter = logging.Formatter(
-            "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-            datefmt="%Y-%m-%d %H:%M:%S",
-        )
-        handler.setFormatter(formatter)
-        root_logger.addHandler(handler)
+    for handler in root_logger.handlers[:]:
+        root_logger.removeHandler(handler)
+        
+    # Create logs directory if it doesn't exist
+    logs_dir = Path("logs")
+    logs_dir.mkdir(exist_ok=True)
+    
+    # Delete log files older than one month
+    cleanup_old_logs(logs_dir)
+    
+    # Create log filename with timestamp
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    log_file = logs_dir / f"transcribe_{timestamp}.log"
+    
+    # Add console handler
+    console_handler = logging.StreamHandler()
+    console_formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+    console_handler.setFormatter(console_formatter)
+    root_logger.addHandler(console_handler)
+    
+    # Add file handler
+    file_handler = logging.FileHandler(log_file)
+    file_formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+    file_handler.setFormatter(file_formatter)
+    root_logger.addHandler(file_handler)
+    
+    # Log the start of the application
+    logging.info(f"Logging started - output file: {log_file}")
+
+
+def cleanup_old_logs(logs_dir: Path) -> None:
+    """
+    Deletes log files older than one month from the specified directory.
+    
+    Args:
+        logs_dir: Path to the logs directory
+    """
+    try:
+        # Calculate the cutoff date (one month ago)
+        cutoff_date = datetime.now() - timedelta(days=30)
+        
+        # Get all log files
+        log_files = list(logs_dir.glob("transcribe_*.log"))
+        
+        # Track stats for logging
+        deleted_count = 0
+        
+        for log_file in log_files:
+            # Get file modification time
+            file_time = datetime.fromtimestamp(log_file.stat().st_mtime)
+            
+            # Delete if older than the cutoff date
+            if file_time < cutoff_date:
+                log_file.unlink()
+                deleted_count += 1
+        
+        if deleted_count > 0:
+            logging.info(f"Deleted {deleted_count} log files older than one month")
+            
+    except Exception as e:
+        # Log error but don't interrupt the program
+        logging.warning(f"Error cleaning up old logs: {e}")
 
 
 def display_supported_formats() -> str:
@@ -125,7 +192,7 @@ def cli_main(args: Optional[List[str]] = None) -> int:
     
     Args:
         args: Command-line arguments (uses sys.argv if None)
-        
+    
     Returns:
         int: Exit code (0 for success, non-zero for failure)
     """
@@ -146,20 +213,30 @@ def cli_main(args: Optional[List[str]] = None) -> int:
             output_path=getattr(parsed_args, "output", None),
         )
         return 0 if result else 1
-        
+    
     elif parsed_args.command == "batch":
         # Process files in a directory
         send_emails = getattr(parsed_args, "email", False)
-        success, processed_count = process_folder(
+        result = process_folder(
             parsed_args.directory,
             send_emails=send_emails,
         )
-        return 0 if success else 1
         
-    else:
-        # No command specified
-        logger.error("No command specified. Use 'file' or 'batch' command.")
-        return 1
+        # Process folder returns a tuple of (success, processed_count)
+        if isinstance(result, tuple) and len(result) == 2:
+            success, processed_count = result
+            if processed_count > 0:
+                return 0 if success else 1
+            else:
+                logger.warning("No files were processed")
+                return 0  # No files is not an error
+        else:
+            # Handle backward compatibility with older versions that returned just a boolean
+            return 0 if result else 1
+    
+    # If we get here, no command was specified
+    logger.error("No command specified")
+    return 1
 
 
 if __name__ == "__main__":
