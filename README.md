@@ -22,6 +22,12 @@ cd transcribe
 pip install -e .
 ```
 
+After installation, verify the package is installed correctly:
+
+```bash
+pip list | grep transcribe
+```
+
 ## Requirements
 
 - Python 3.7+
@@ -33,23 +39,23 @@ pip install -e .
 
 ```bash
 # Transcribe a single file
-transcribe file path/to/media_file.mp3
+python -m transcribe file path/to/media_file.mp3
 
 # With custom output path
-transcribe file path/to/media_file.mp3 --output path/to/output.md
+python -m transcribe file path/to/media_file.mp3 --output path/to/output.md
 
 # Enable verbose logging
-transcribe file path/to/media_file.mp3 --verbose
+python -m transcribe file path/to/media_file.mp3 --verbose
 ```
 
 ### Batch Processing
 
 ```bash
 # Process all new media files in a directory
-transcribe batch path/to/directory
+python -m transcribe batch path/to/directory
 
 # With email notifications
-transcribe batch path/to/directory --email
+python -m transcribe batch path/to/directory --email
 ```
 
 For email notifications, set the following environment variables:
@@ -64,11 +70,11 @@ For email notifications, set the following environment variables:
 
 ```bash
 # Show general help
-transcribe --help
+python -m transcribe --help
 
 # Show help for a specific command
-transcribe file --help
-transcribe batch --help
+python -m transcribe file --help
+python -m transcribe batch --help
 ```
 
 ## Automation with Cron
@@ -102,6 +108,34 @@ For less frequent runs, adjust the cron timing:
 - `*/5 * * * *` - every 5 minutes
 - `0 * * * *` - every hour
 - `0 0 * * *` - daily at midnight
+
+## Troubleshooting
+
+### Command Not Found
+If you encounter an error like `command not found: transcribe`, use the module invocation pattern with Python:
+```bash
+python -m transcribe [command] [options]
+```
+
+### API Key Issues
+If you encounter authentication errors, verify your AssemblyAI API key is set correctly:
+```bash
+# Check if environment variable is set
+echo $ASSEMBLY_API_KEY
+
+# Set the API key if needed
+export ASSEMBLY_API_KEY="your_api_key_here"
+```
+
+### Path Issues in Automation Script
+If using the automation script, ensure all paths are correct and absolute. Verify paths with:
+```bash
+# Check media directory exists
+ls -la /path/to/your/media/directory
+
+# Check project directory exists
+ls -la /path/to/transcribe/project
+```
 
 ## Contributing
 
