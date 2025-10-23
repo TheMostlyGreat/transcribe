@@ -63,74 +63,111 @@ def test_get_media_type():
     assert get_media_type(Path("test.mov")) == "video"
 
 
-def test_transcribe_audio_file_scenarios(test_audio_file, temp_dir, mock_env_vars):
-    """Test various transcription scenarios."""
-    # Setup for successful transcription with speaker labels
+@pytest.mark.unit
+def test_transcribe_with_speaker_labels(test_audio_file, temp_dir, mock_env_vars):
+    """Test successful transcription with speaker diarization."""
+    # Arrange
     utterances = [
         MockUtterance(speaker="A", text="This is speaker A.", start=0, end=2000),
         MockUtterance(speaker="B", text="This is speaker B.", start=2500, end=4500)
     ]
     mock_response = MockTranscriptResponse(utterances=utterances)
-    
-    # 1. Test successful transcription with speaker labels
+
     mock_transcriber = mock.Mock()
     mock_transcriber.transcribe.return_value = mock_response
     mock_aai = MockAssemblyAI()
     mock_aai.Transcriber = mock.Mock(return_value=mock_transcriber)
-    
+
+    # Act
     with mock.patch("transcribe.core.aai", mock_aai):
         output_path = transcribe_audio_file_original(
             str(test_audio_file),
             output_path=str(temp_dir / "output.md")
         )
-        
-        assert output_path is not None
-        assert output_path.exists()
-        
-        content = output_path.read_text()
-        assert "# Transcription of" in content
-        assert "**Speaker A:**" in content
-        assert "**Speaker B:**" in content
-    
-    # 2. Test successful transcription without speaker labels
-    mock_response_no_speakers = MockTranscriptResponse(utterances=[])
-    mock_transcriber.transcribe.return_value = mock_response_no_speakers
-    
+
+    # Assert
+    assert output_path is not None
+    assert output_path.exists()
+
+    content = output_path.read_text()
+    assert "# Transcription of" in content
+    assert "**Speaker A:**" in content
+    assert "**Speaker B:**" in content
+
+
+@pytest.mark.unit
+def test_transcribe_without_speaker_labels(test_audio_file, temp_dir, mock_env_vars):
+    """Test successful transcription without speaker diarization."""
+    # Arrange
+    mock_response = MockTranscriptResponse(utterances=[])
+
+    mock_transcriber = mock.Mock()
+    mock_transcriber.transcribe.return_value = mock_response
+    mock_aai = MockAssemblyAI()
+    mock_aai.Transcriber = mock.Mock(return_value=mock_transcriber)
+
+    # Act
     with mock.patch("transcribe.core.aai", mock_aai):
         output_path = transcribe_audio_file_original(
             str(test_audio_file),
             output_path=str(temp_dir / "output_no_speakers.md")
         )
-        
-        assert output_path is not None
-        assert output_path.exists()
-        
-        content = output_path.read_text()
-        assert "# Transcription of" in content
-        assert "**Speaker" not in content
-    
-    # 3. Test error handling
+
+    # Assert
+    assert output_path is not None
+    assert output_path.exists()
+
+    content = output_path.read_text()
+    assert "# Transcription of" in content
+    assert "**Speaker" not in content
+
+
+@pytest.mark.unit
+def test_transcribe_handles_api_error(test_audio_file, temp_dir, mock_env_vars):
+    """Test that API errors are handled gracefully."""
+    # Arrange
+    mock_transcriber = mock.Mock()
     mock_transcriber.transcribe.return_value = create_error_response()
-    
+    mock_aai = MockAssemblyAI()
+    mock_aai.Transcriber = mock.Mock(return_value=mock_transcriber)
+
+    # Act
     with mock.patch("transcribe.core.aai", mock_aai):
         output_path = transcribe_audio_file_original(
             str(test_audio_file),
             output_path=str(temp_dir / "output_error.md")
         )
-        
-        assert output_path is None
-    
-    # 4. Test non-existent file
+
+    # Assert
+    assert output_path is None
+
+
+@pytest.mark.unit
+def test_transcribe_rejects_missing_file(temp_dir, mock_env_vars):
+    """Test that missing files are rejected with clear error."""
+    # Arrange
     nonexistent_file = temp_dir / "nonexistent.mp3"
-    
+    mock_aai = MockAssemblyAI()
+
+    # Act
     with mock.patch("transcribe.core.aai", mock_aai):
         output_path = transcribe_audio_file_original(str(nonexistent_file))
-        assert output_path is None
-    
-    # 5. Test unsupported file format
+
+    # Assert
+    assert output_path is None
+
+
+@pytest.mark.unit
+def test_transcribe_rejects_unsupported_format(temp_dir, mock_env_vars):
+    """Test that unsupported file formats are rejected."""
+    # Arrange
     unsupported_file = temp_dir / "test.txt"
     unsupported_file.write_text("This is not an audio file")
-    
+    mock_aai = MockAssemblyAI()
+
+    # Act
     with mock.patch("transcribe.core.aai", mock_aai):
         output_path = transcribe_audio_file_original(str(unsupported_file))
-        assert output_path is None 
+
+    # Assert
+    assert output_path is None 

@@ -97,72 +97,92 @@ def create_mock_transcriber():
             output_path = file_path.with_name(f"{file_path.stem}_transcription.md")
         else:
             output_path = Path(output_path)
-        
+
         output_path.write_text("Mock transcription")
         return output_path
     return side_effect
 
 
-def test_process_folder_scenarios(temp_batch_dir, mock_env_vars):
-    """Test various folder processing scenarios."""
-    # Create a fresh batch directory for each scenario to avoid state between tests
-    # 1. Process all files successfully
+@pytest.mark.integration
+def test_process_folder_all_files_successfully(temp_batch_dir, mock_env_vars):
+    """Test processing all files in a folder successfully."""
+    # Arrange
     with mock.patch("transcribe.batch.find_new_media_files") as mock_find_files:
         with mock.patch("transcribe.batch.transcribe_audio_file") as mock_transcribe:
-            # Setup mock to return 3 files
             mock_find_files.return_value = [
                 (temp_batch_dir / f"test_audio_{i}.mp3", None) for i in range(3)
             ]
-            # Setup transcription mock
             mock_transcribe.side_effect = create_mock_transcriber()
-            
+
+            # Act
             success, count = process_folder(str(temp_batch_dir))
+
+            # Assert
             assert success is True
             assert count == 3
             assert mock_transcribe.call_count == 3
-    
-    # 2. Process with email notifications
+
+
+@pytest.mark.integration
+def test_process_folder_with_email_notifications(temp_batch_dir, mock_env_vars):
+    """Test batch processing with email notifications enabled."""
+    # Arrange
     with mock.patch("transcribe.batch.find_new_media_files") as mock_find_files:
         with mock.patch("transcribe.batch.transcribe_audio_file") as mock_transcribe:
             with mock.patch("transcribe.batch.send_email_alert") as mock_email:
-                # Setup mock to return 3 files
                 mock_find_files.return_value = [
                     (temp_batch_dir / f"test_audio_{i}.mp3", None) for i in range(3)
                 ]
                 mock_transcribe.side_effect = create_mock_transcriber()
                 mock_email.return_value = True
-                
+
+                # Act
                 success, count = process_folder(str(temp_batch_dir), send_emails=True)
+
+                # Assert
                 assert success is True
                 assert count == 3
                 assert mock_email.call_count == 3
-    
-    # 3. Process with some failures
+
+
+@pytest.mark.integration
+def test_process_folder_with_partial_failures(temp_batch_dir, mock_env_vars):
+    """Test folder processing when some files fail to transcribe."""
+    # Arrange
     with mock.patch("transcribe.batch.find_new_media_files") as mock_find_files:
         with mock.patch("transcribe.batch.transcribe_audio_file") as mock_transcribe:
-            # Setup mock to return 3 files
             mock_find_files.return_value = [
                 (temp_batch_dir / f"test_audio_{i}.mp3", None) for i in range(3)
             ]
-            
+
             # Set up partial failure for test_audio_1.mp3
             def partial_failure(path, output_path=None, retry_existing=False):
                 if "test_audio_1.mp3" in str(path):
                     return None
                 return create_mock_transcriber()(path, output_path, retry_existing)
-            
+
             mock_transcribe.side_effect = partial_failure
+
+            # Act
             success, count = process_folder(str(temp_batch_dir))
-            assert success is False
-            assert count == 2
-    
-    # 4. Empty folder
+
+            # Assert
+            assert success is False  # Not all files succeeded
+            assert count == 2  # Only 2 out of 3 succeeded
+
+
+@pytest.mark.integration
+def test_process_folder_with_no_files(temp_batch_dir, mock_env_vars):
+    """Test batch processing when no files need processing."""
+    # Arrange
     with mock.patch("transcribe.batch.find_new_media_files") as mock_find_files:
         with mock.patch("transcribe.batch.transcribe_audio_file") as mock_transcribe:
-            # No files to process
             mock_find_files.return_value = []
-            
+
+            # Act
             success, count = process_folder(str(temp_batch_dir))
-            assert success is True
+
+            # Assert
+            assert success is True  # No files is not an error
             assert count == 0
             mock_transcribe.assert_not_called() 
